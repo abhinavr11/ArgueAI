@@ -84,7 +84,7 @@ def extract_bert_embeddings(input_tensors):
     return embeddings
 
 df['embeddings'] = df['input_tensors'].apply(extract_bert_embeddings)
-
+df.to_csv('output.csv', index=False)
 print("Original Text:", df['rules'][0])
 print("Tokenized Text:", df['tokens'][0])
 print("Token IDs:", df['token_ids'][0])
