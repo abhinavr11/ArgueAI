@@ -42,9 +42,10 @@ while True:
     defence_state = torch.tensor(defence_state, dtype=torch.float32, device=device).unsqueeze(0)
    
     for t in range(3):
-        action = prosecutor.select_action(state)
-        #decode the action and show prosecutor's argument
-        reward, done1 = env.step(action.item())
+        prosecutor_action = prosecutor.select_action(state)
+        defence_action = defence.select_action(defence_state)
+
+        prosecutor_reward, defence_reward, done = env.step(prosecutor_action.item(), defence_action.item())
 
         '''observation, reward, terminated, truncated, _ = env.step(action.item())
         reward = torch.tensor([reward], device=device)
@@ -54,7 +55,7 @@ while True:
         #will implement after creating the csv file
 
         # Store the transition in memory
-        prosecutor.memory.push(state, action, reward)
+        prosecutor.memory.push(state, prosecutor_action, prosecutor_reward)
 
         # Move to the next state
         #state = next_state
@@ -72,12 +73,8 @@ while True:
 
         ###################################  Defence Agent  #################################
 
-        action = defence.select_action(defence_state)
-        #decode the action and show defence's argument
-        reward, done2 = env.step(action)
-
         # Store the transition in memory
-        defence.memory.push(state, action, reward)
+        defence.memory.push(state, defence_action, defence_reward)
         # Perform one step of the optimization (on the policy network)
         defence.optimize_model()
 
@@ -89,7 +86,7 @@ while True:
             target_net_state_dict_defence[key] = policy_net_state_dict_defence[key]*defence.TAU + target_net_state_dict_defence[key]*(1-defence.TAU)
         defence.target_net.load_state_dict(target_net_state_dict_defence)
 
-        if done1 & done2:
+        if done:
             break
 
 '''print('Complete')
