@@ -103,7 +103,7 @@ class Prosecutor_Agent:
                 # t.max(1) will return the largest column value of each row.
                 # second column on max result is index of where max element was
                 # found, so we pick action with the larger expected reward.
-                return self.policy_net(state).max(1)[1].view(1, 1)
+                return self.policy_net(state).max(1)[1]
         else:
             return torch.tensor([[random.randint(0,n_actions-1)]], device=device, dtype=torch.long)
 
