@@ -10,6 +10,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+import pickle
 
 from Prosecutor_final import *
 from Defence_final import *
@@ -33,61 +34,104 @@ defence=Defence_Agent(n_actions)
 else:
     num_episodes = 50'''
 
+# Load prosecutor model parameters and replay memory if they exist
+try:
+    prosecutor.policy_net.load_state_dict(torch.load('prosecutor_policy_net.pth'))
+    prosecutor.target_net.load_state_dict(torch.load('prosecutor_target_net.pth'))
+    with open('prosecutor_replay_memory.pkl', 'rb') as f:
+        prosecutor.memory = pickle.load(f)
+    print("Loaded prosecutor's previous model parameters and replay memory.")
+except FileNotFoundError:
+    print("No previous model parameters and replay memory found for prosecutor. Starting from scratch.")
+
+# Load defence model parameters and replay memory if they exist
+try:
+    defence.policy_net.load_state_dict(torch.load('defence_policy_net.pth'))
+    defence.target_net.load_state_dict(torch.load('defence_target_net.pth'))
+    with open('defence_replay_memory.pkl', 'rb') as f:
+        defence.memory = pickle.load(f)
+    print("Loaded defence's previous model parameters and replay memory.")
+except FileNotFoundError:
+    print("No previous model parameters and replay memory found for defence. Starting from scratch.")
+
+
+
 while True:
-    # Initialize the environment and get it's state
-    # state = [i_episode]th entry of the csv file which contains case contexts and the required output which the agent should give
-    state, defence_state=env.reset()
-    defence_state=defence_state+ state
-    state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
-    defence_state = torch.tensor(defence_state, dtype=torch.float32, device=device).unsqueeze(0)
-   
-    for t in range(3):
-        prosecutor_action = prosecutor.select_action(state)
-        defence_action = defence.select_action(defence_state)
+    try:
+        # Initialize the environment and get it's state
+        # state = [i_episode]th entry of the csv file which contains case contexts and the required output which the agent should give
+        state, defence_state=env.reset()
+        defence_state=defence_state+ state
+        state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
+        defence_state = torch.tensor(defence_state, dtype=torch.float32, device=device).unsqueeze(0)
+    
+        for t in range(3):
+            prosecutor_action = prosecutor.select_action(state)
+            defence_action = defence.select_action(defence_state)
 
-        prosecutor_reward, defence_reward, done = env.step(prosecutor_action.item(), defence_action.item())
+            prosecutor_reward, defence_reward, done = env.step(prosecutor_action.item(), defence_action.item())
 
-        '''observation, reward, terminated, truncated, _ = env.step(action.item())
-        reward = torch.tensor([reward], device=device)
-        done = terminated or truncated'''
+            '''observation, reward, terminated, truncated, _ = env.step(action.item())
+            reward = torch.tensor([reward], device=device)
+            done = terminated or truncated'''
+            
+            #reward=0 # if action == corresponding rule then reward
+            #will implement after creating the csv file
+
+            # Store the transition in memory
+            prosecutor.memory.push(state, prosecutor_action, prosecutor_reward)
+
+            # Move to the next state
+            #state = next_state
+
+            # Perform one step of the optimization (on the policy network)
+            prosecutor.optimize_model()
+
+            # Soft update of the target network's weights
+            # θ′ ← τ θ + (1 −τ )θ′
+            target_net_state_dict_prosecutor = prosecutor.target_net.state_dict()
+            policy_net_state_dict_prosecutor = prosecutor.policy_net.state_dict()
+            for key in policy_net_state_dict_prosecutor:
+                target_net_state_dict_prosecutor[key] = policy_net_state_dict_prosecutor[key]*prosecutor.TAU + target_net_state_dict_prosecutor[key]*(1-prosecutor.TAU)
+            prosecutor.target_net.load_state_dict(target_net_state_dict_prosecutor)
+
+            ###################################  Defence Agent  #################################
+
+            # Store the transition in memory
+            defence.memory.push(state, defence_action, defence_reward)
+            # Perform one step of the optimization (on the policy network)
+            defence.optimize_model()
+
+            # Soft update of the target network's weights
+            # θ′ ← τ θ + (1 −τ )θ′
+            target_net_state_dict_defence = defence.target_net.state_dict()
+            policy_net_state_dict_defence = defence.policy_net.state_dict()
+            for key in policy_net_state_dict_defence:
+                target_net_state_dict_defence[key] = policy_net_state_dict_defence[key]*defence.TAU + target_net_state_dict_defence[key]*(1-defence.TAU)
+            defence.target_net.load_state_dict(target_net_state_dict_defence)
+
+            if done:
+                break
+        pass
+    except KeyboardInterrupt:
+        # Save prosecutor model parameters
+        torch.save(prosecutor.policy_net.state_dict(), 'prosecutor_policy_net.pth')
+        torch.save(prosecutor.target_net.state_dict(), 'prosecutor_target_net.pth')
+
+        # Save prosecutor replay memory
+        with open('prosecutor_replay_memory.pkl', 'wb') as f:
+            pickle.dump(prosecutor.memory, f)
         
-        #reward=0 # if action == corresponding rule then reward
-        #will implement after creating the csv file
+        # Save defence model parameters
+        torch.save(defence.policy_net.state_dict(), 'defence_policy_net.pth')
+        torch.save(defence.target_net.state_dict(), 'defence_target_net.pth')
 
-        # Store the transition in memory
-        prosecutor.memory.push(state, prosecutor_action, prosecutor_reward)
+        # Save defence replay memory
+        with open('defence_replay_memory.pkl', 'wb') as f:
+            pickle.dump(defence.memory, f)
+        break
 
-        # Move to the next state
-        #state = next_state
 
-        # Perform one step of the optimization (on the policy network)
-        prosecutor.optimize_model()
-
-        # Soft update of the target network's weights
-        # θ′ ← τ θ + (1 −τ )θ′
-        target_net_state_dict_prosecutor = prosecutor.target_net.state_dict()
-        policy_net_state_dict_prosecutor = prosecutor.policy_net.state_dict()
-        for key in policy_net_state_dict_prosecutor:
-            target_net_state_dict_prosecutor[key] = policy_net_state_dict_prosecutor[key]*prosecutor.TAU + target_net_state_dict_prosecutor[key]*(1-prosecutor.TAU)
-        prosecutor.target_net.load_state_dict(target_net_state_dict_prosecutor)
-
-        ###################################  Defence Agent  #################################
-
-        # Store the transition in memory
-        defence.memory.push(state, defence_action, defence_reward)
-        # Perform one step of the optimization (on the policy network)
-        defence.optimize_model()
-
-        # Soft update of the target network's weights
-        # θ′ ← τ θ + (1 −τ )θ′
-        target_net_state_dict_defence = defence.target_net.state_dict()
-        policy_net_state_dict_defence = defence.policy_net.state_dict()
-        for key in policy_net_state_dict_defence:
-            target_net_state_dict_defence[key] = policy_net_state_dict_defence[key]*defence.TAU + target_net_state_dict_defence[key]*(1-defence.TAU)
-        defence.target_net.load_state_dict(target_net_state_dict_defence)
-
-        if done:
-            break
 
 '''print('Complete')
 #plot_durations(show_result=True)
