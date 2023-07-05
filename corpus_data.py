@@ -43,7 +43,7 @@ total=content+loopholes
 rule_list = total.split('.')
 #print(rule_list)
 
-df = pd.DataFrame({'rules': rule_list})
+'''df = pd.DataFrame({'rules': rule_list})
 pd.set_option('display.max_rows', None)
 print(df)
 
@@ -90,3 +90,4 @@ print("Token IDs:", df['token_ids'][0])
 print("Padded Token IDs:", df['padded_token_ids'][0])
 print("Input Tensors:\n", df['input_tensors'][0])
 print("BERT Embeddings:\n", df['embeddings'][0])
+'''

@@ -64,7 +64,7 @@ n_actions = len(env.action_space)
 #n_observations = len(state)
 
 class Prosecutor_Agent:
-    def __init__(self, n_actions):        
+    def __init__(self, n_actions, steps_done):        
         # BATCH_SIZE is the number of transitions sampled from the replay buffer
         # GAMMA is the discount factor as mentioned in the previous section
         # EPS_START is the starting value of epsilon
@@ -89,15 +89,15 @@ class Prosecutor_Agent:
         self.memory = ReplayMemory(10000)
 
 
-        self.steps_done = 0
+        self.steps_done = steps_done
 
 
     def select_action(self, state):
-        global steps_done
+        #global steps_done
         sample = random.random()
         eps_threshold = self.EPS_END + (self.EPS_START - self.EPS_END) * \
-            math.exp(-1. * steps_done / self.EPS_DECAY)
-        steps_done += 1
+            math.exp(-1. * self.steps_done / self.EPS_DECAY)
+        self.steps_done += 1
         if sample > eps_threshold:
             with torch.no_grad():
                 # t.max(1) will return the largest column value of each row.

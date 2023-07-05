@@ -11,6 +11,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import pickle
+import os
 
 from Prosecutor_final import *
 from Defence_final import *
@@ -25,8 +26,20 @@ n_actions = len(env.action_space)
 # Get the number of state observations
 #state = env.reset()
 
-prosecutor=Prosecutor_Agent(n_actions)
-defence=Defence_Agent(n_actions)
+# Define the file path for storing the variable value
+file_path = "memory/steps_done_value.txt"
+
+# To load the last value of steps_done variable
+if os.path.exists(file_path):
+    # If the file exists, read the value from it
+    with open(file_path, "r") as file:
+        steps_done = int(file.read())
+else:
+    # If the file doesn't exist, initialize the variable
+    steps_done = 0
+
+prosecutor=Prosecutor_Agent(n_actions, steps_done)
+defence=Defence_Agent(n_actions, steps_done)
 #memory = ReplayMemory(10000)
 
 '''if torch.cuda.is_available():
@@ -36,9 +49,9 @@ else:
 
 # Load prosecutor model parameters and replay memory if they exist
 try:
-    prosecutor.policy_net.load_state_dict(torch.load('prosecutor_policy_net.pth'))
-    prosecutor.target_net.load_state_dict(torch.load('prosecutor_target_net.pth'))
-    with open('prosecutor_replay_memory.pkl', 'rb') as f:
+    prosecutor.policy_net.load_state_dict(torch.load('memory/prosecutor_policy_net.pth'))
+    prosecutor.target_net.load_state_dict(torch.load('memory/prosecutor_target_net.pth'))
+    with open('memory/prosecutor_replay_memory.pkl', 'rb') as f:
         prosecutor.memory = pickle.load(f)
     print("Loaded prosecutor's previous model parameters and replay memory.")
 except FileNotFoundError:
@@ -46,9 +59,9 @@ except FileNotFoundError:
 
 # Load defence model parameters and replay memory if they exist
 try:
-    defence.policy_net.load_state_dict(torch.load('defence_policy_net.pth'))
-    defence.target_net.load_state_dict(torch.load('defence_target_net.pth'))
-    with open('defence_replay_memory.pkl', 'rb') as f:
+    defence.policy_net.load_state_dict(torch.load('memory/defence_policy_net.pth'))
+    defence.target_net.load_state_dict(torch.load('memory/defence_target_net.pth'))
+    with open('memory/defence_replay_memory.pkl', 'rb') as f:
         defence.memory = pickle.load(f)
     print("Loaded defence's previous model parameters and replay memory.")
 except FileNotFoundError:
@@ -61,7 +74,7 @@ while True:
         # Initialize the environment and get it's state
         # state = [i_episode]th entry of the csv file which contains case contexts and the required output which the agent should give
         state, defence_state=env.reset()
-        defence_state=defence_state+ state
+        #defence_state=defence_state+ state
         state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
         defence_state = torch.tensor(defence_state, dtype=torch.float32, device=device).unsqueeze(0)
     
@@ -115,20 +128,23 @@ while True:
         pass
     except KeyboardInterrupt:
         # Save prosecutor model parameters
-        torch.save(prosecutor.policy_net.state_dict(), 'prosecutor_policy_net.pth')
-        torch.save(prosecutor.target_net.state_dict(), 'prosecutor_target_net.pth')
+        torch.save(prosecutor.policy_net.state_dict(), 'memory/prosecutor_policy_net.pth')
+        torch.save(prosecutor.target_net.state_dict(), 'memory/prosecutor_target_net.pth')
 
         # Save prosecutor replay memory
-        with open('prosecutor_replay_memory.pkl', 'wb') as f:
+        with open('memory/prosecutor_replay_memory.pkl', 'wb') as f:
             pickle.dump(prosecutor.memory, f)
         
         # Save defence model parameters
-        torch.save(defence.policy_net.state_dict(), 'defence_policy_net.pth')
-        torch.save(defence.target_net.state_dict(), 'defence_target_net.pth')
+        torch.save(defence.policy_net.state_dict(), 'memory/defence_policy_net.pth')
+        torch.save(defence.target_net.state_dict(), 'memory/defence_target_net.pth')
 
         # Save defence replay memory
-        with open('defence_replay_memory.pkl', 'wb') as f:
+        with open('memory/defence_replay_memory.pkl', 'wb') as f:
             pickle.dump(defence.memory, f)
+        
+        with open(file_path, "w") as file:
+            file.write(str(prosecutor.steps_done))
         break
 
 
