@@ -45,7 +45,7 @@ class DQN(nn.Module):
 
     def __init__(self, n_actions):
         super(DQN, self).__init__()
-        self.layer1 = nn.Linear(768, 128) #768=bert embedding size
+        self.layer1 = nn.Linear(98304, 128) #768=bert embedding size *128
         self.layer2 = nn.Linear(128, 128)
         self.layer3 = nn.Linear(128, n_actions)
 
@@ -98,7 +98,7 @@ class Defence_Agent:
                 # t.max(1) will return the largest column value of each row.
                 # second column on max result is index of where max element was
                 # found, so we pick action with the larger expected reward.
-                return self.policy_net(state).max(1)[1]
+                return self.policy_net(state).max(1)[1].view(1, 1)
         else:
             return torch.tensor([[random.randint(0,n_actions-1)]], device=device, dtype=torch.long)
 

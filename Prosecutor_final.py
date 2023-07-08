@@ -46,7 +46,7 @@ class DQN(nn.Module):
 
     def __init__(self, n_actions):
         super(DQN, self).__init__()
-        self.layer1 = nn.Linear(768, 128) #768=bert embedding size
+        self.layer1 = nn.Linear(98304, 128) #768=bert embedding size * 128
         self.layer2 = nn.Linear(128, 128)
         self.layer3 = nn.Linear(128, n_actions)
 
@@ -100,11 +100,16 @@ class Prosecutor_Agent:
         self.steps_done += 1
         if sample > eps_threshold:
             with torch.no_grad():
+                print('bye')
+                print(state)
+                print(state.shape)
+                #print(n_actions)
                 # t.max(1) will return the largest column value of each row.
                 # second column on max result is index of where max element was
                 # found, so we pick action with the larger expected reward.
-                return self.policy_net(state).max(1)[1]
+                return self.policy_net(state).max(1)[1].view(1, 1)
         else:
+            print('hello')
             return torch.tensor([[random.randint(0,n_actions-1)]], device=device, dtype=torch.long)
 
 
@@ -149,9 +154,14 @@ class Prosecutor_Agent:
         # (a final state would've been the one after which simulation ended)
         non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,batch.state)), device=device, dtype=torch.bool)
         non_final_next_states = torch.cat([s for s in batch.state if s is not None])
+        #print('yup')
         state_batch = torch.cat(batch.state)
         action_batch = torch.cat(batch.action)
         reward_batch = torch.cat(batch.reward)
+        #print('yup2')
+        print(state_batch.shape)
+        print(action_batch.shape)
+        print(reward_batch.shape)
 
         # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
         # columns of actions taken. These are the actions which would've been taken
@@ -169,6 +179,8 @@ class Prosecutor_Agent:
         # Compute the expected Q values
         expected_state_action_values = (next_state_values * self.GAMMA) + reward_batch
 
+        #print(state_action_values.shape)
+        #print(expected_state_action_values.shape)
         # Compute Huber loss
         criterion = nn.SmoothL1Loss()
         loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))

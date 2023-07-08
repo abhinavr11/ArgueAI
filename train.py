@@ -12,6 +12,8 @@ import torch.optim as optim
 import torch.nn.functional as F
 import pickle
 import os
+import openai
+import time
 
 from Prosecutor_final import *
 from Defence_final import *
@@ -75,15 +77,20 @@ while True:
         # state = [i_episode]th entry of the csv file which contains case contexts and the required output which the agent should give
         state, defence_state=env.reset()
         #defence_state=defence_state+ state
-        state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
-        defence_state = torch.tensor(defence_state, dtype=torch.float32, device=device).unsqueeze(0)
+        #state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
+        #defence_state = torch.tensor(defence_state, dtype=torch.float32, device=device).unsqueeze(0)
     
-        for t in range(3):
+        #for t in range(3):
+        while True:
             prosecutor_action = prosecutor.select_action(state)
             defence_action = defence.select_action(defence_state)
-
+            print(prosecutor_action)
+            print(prosecutor_action.shape)
+            print(prosecutor_action.item())
             prosecutor_reward, defence_reward, done = env.step(prosecutor_action.item(), defence_action.item())
-
+            #print('yup3')
+            prosecutor_reward=torch.tensor([prosecutor_reward], device=device, dtype=torch.int32)
+            defence_reward=torch.tensor([defence_reward], device=device, dtype=torch.int32)
             '''observation, reward, terminated, truncated, _ = env.step(action.item())
             reward = torch.tensor([reward], device=device)
             done = terminated or truncated'''
@@ -126,7 +133,12 @@ while True:
             if done:
                 break
         pass
-    except KeyboardInterrupt:
+
+    except openai.error.RateLimitError:
+        time.sleep(1)
+        pass
+
+    except Exception as e:
         # Save prosecutor model parameters
         torch.save(prosecutor.policy_net.state_dict(), 'memory/prosecutor_policy_net.pth')
         torch.save(prosecutor.target_net.state_dict(), 'memory/prosecutor_target_net.pth')
@@ -143,9 +155,12 @@ while True:
         with open('memory/defence_replay_memory.pkl', 'wb') as f:
             pickle.dump(defence.memory, f)
         
+        # Save steps_done value 
         with open(file_path, "w") as file:
             file.write(str(prosecutor.steps_done))
         break
+   
+
 
 
 

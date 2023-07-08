@@ -41,6 +41,8 @@ loopholes=loopholes_traffic+loopholes_crime+loopholes_environment+loopholes_fami
 
 total=content+loopholes
 rule_list = total.split('.')
+content=content.split('.')
+loopholes=loopholes.split('.')
 #print(rule_list)
 
 '''df = pd.DataFrame({'rules': rule_list})
@@ -80,6 +82,7 @@ def extract_bert_embeddings(input_tensors):
         model.eval()
         outputs = model(input_tensors)
         embeddings = outputs[0][0]
+        print(embeddings.shape)
     return embeddings
 
 df['embeddings'] = df['input_tensors'].apply(extract_bert_embeddings)
