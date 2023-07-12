@@ -79,16 +79,18 @@ while True:
         #defence_state=defence_state+ state
         #state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
         #defence_state = torch.tensor(defence_state, dtype=torch.float32, device=device).unsqueeze(0)
-    
-        #for t in range(3):
-        while True:
+        score=0
+
+        for t in range(600):
+        #while True:
             prosecutor_action = prosecutor.select_action(state)
             defence_action = defence.select_action(defence_state)
-            print(prosecutor_action)
-            print(prosecutor_action.shape)
-            print(prosecutor_action.item())
+            #print(prosecutor_action)
+            #print(prosecutor_action.shape)
+            #print(prosecutor_action.item())
             prosecutor_reward, defence_reward, done = env.step(prosecutor_action.item(), defence_action.item())
             #print('yup3')
+            score = score+ int(prosecutor_reward) + int(defence_reward)
             prosecutor_reward=torch.tensor([prosecutor_reward], device=device, dtype=torch.int32)
             defence_reward=torch.tensor([defence_reward], device=device, dtype=torch.int32)
             '''observation, reward, terminated, truncated, _ = env.step(action.item())
@@ -131,14 +133,17 @@ while True:
             defence.target_net.load_state_dict(target_net_state_dict_defence)
 
             if done:
+                print(score)
+                with open('memory/score.txt', "a") as file:
+                    file.write(str(score)+'\n')
                 break
         pass
 
-    except openai.error.RateLimitError:
-        time.sleep(1)
-        pass
-
-    except Exception as e:
+        '''except openai.error.RateLimitError:
+            time.sleep(1)
+            pass'''
+    
+    except KeyboardInterrupt:
         # Save prosecutor model parameters
         torch.save(prosecutor.policy_net.state_dict(), 'memory/prosecutor_policy_net.pth')
         torch.save(prosecutor.target_net.state_dict(), 'memory/prosecutor_target_net.pth')
@@ -159,6 +164,31 @@ while True:
         with open(file_path, "w") as file:
             file.write(str(prosecutor.steps_done))
         break
+
+    except SystemExit:
+        # Save prosecutor model parameters
+        torch.save(prosecutor.policy_net.state_dict(), 'memory/prosecutor_policy_net.pth')
+        torch.save(prosecutor.target_net.state_dict(), 'memory/prosecutor_target_net.pth')
+
+        # Save prosecutor replay memory
+        with open('memory/prosecutor_replay_memory.pkl', 'wb') as f:
+            pickle.dump(prosecutor.memory, f)
+        
+        # Save defence model parameters
+        torch.save(defence.policy_net.state_dict(), 'memory/defence_policy_net.pth')
+        torch.save(defence.target_net.state_dict(), 'memory/defence_target_net.pth')
+
+        # Save defence replay memory
+        with open('memory/defence_replay_memory.pkl', 'wb') as f:
+            pickle.dump(defence.memory, f)
+        
+        # Save steps_done value 
+        with open(file_path, "w") as file:
+            file.write(str(prosecutor.steps_done))
+        break
+
+
+
    
 
 

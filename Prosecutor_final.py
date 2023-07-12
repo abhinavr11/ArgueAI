@@ -46,9 +46,9 @@ class DQN(nn.Module):
 
     def __init__(self, n_actions):
         super(DQN, self).__init__()
-        self.layer1 = nn.Linear(98304, 128) #768=bert embedding size * 128
-        self.layer2 = nn.Linear(128, 128)
-        self.layer3 = nn.Linear(128, n_actions)
+        self.layer1 = nn.Linear(384, 256) #768=bert embedding size * 128
+        self.layer2 = nn.Linear(256, 256)
+        self.layer3 = nn.Linear(256, n_actions)
 
     # Called with either one element to determine next action, or a batch
     # during optimization. Returns tensor([[left0exp,right0exp]...]).
@@ -96,20 +96,20 @@ class Prosecutor_Agent:
         #global steps_done
         sample = random.random()
         eps_threshold = self.EPS_END + (self.EPS_START - self.EPS_END) * \
-            math.exp(-1. * self.steps_done / self.EPS_DECAY)
+            math.exp(-1. * self.steps_done /(50* self.EPS_DECAY))
         self.steps_done += 1
         if sample > eps_threshold:
             with torch.no_grad():
-                print('bye')
-                print(state)
-                print(state.shape)
+                #print('bye')
+                #print(state)
+                #print(state.shape)
                 #print(n_actions)
                 # t.max(1) will return the largest column value of each row.
                 # second column on max result is index of where max element was
                 # found, so we pick action with the larger expected reward.
                 return self.policy_net(state).max(1)[1].view(1, 1)
         else:
-            print('hello')
+            #print('hello')
             return torch.tensor([[random.randint(0,n_actions-1)]], device=device, dtype=torch.long)
 
 
@@ -159,9 +159,9 @@ class Prosecutor_Agent:
         action_batch = torch.cat(batch.action)
         reward_batch = torch.cat(batch.reward)
         #print('yup2')
-        print(state_batch.shape)
-        print(action_batch.shape)
-        print(reward_batch.shape)
+        #print(state_batch.shape)
+        #print(action_batch.shape)
+        #print(reward_batch.shape)
 
         # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
         # columns of actions taken. These are the actions which would've been taken

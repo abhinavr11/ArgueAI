@@ -39,7 +39,7 @@ content=content_traffic+content_crime+content_environment+content_family+content
 
 loopholes=loopholes_traffic+loopholes_crime+loopholes_environment+loopholes_family+loopholes_cybersecurity
 
-total=content+loopholes
+total=content_traffic+loopholes_traffic+"Nothing"
 rule_list = total.split('.')
 content=content.split('.')
 loopholes=loopholes.split('.')

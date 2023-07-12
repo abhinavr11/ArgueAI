@@ -3,6 +3,11 @@ import corpus_data
 import torch
 from transformers import BertTokenizer, BertModel
 import agent_training.training_using_gpt_api as api
+from sentence_transformers import SentenceTransformer
+import openai
+import time
+
+import agent_training.prompting as api2
 
 model = BertModel.from_pretrained('bert-base-uncased')
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
@@ -38,21 +43,36 @@ class CourtRoomEnvironment:
         # Tokenize the prompt with bert
         sentence= state
 
-        tokens= self.tokenize_text(sentence)
+        '''tokens= self.tokenize_text(sentence)
         token_ids= tokenizer.convert_tokens_to_ids(tokens)
 
         padded_token_ids = self.pad_sequences(token_ids)
         input_tensors= torch.tensor([padded_token_ids])
         embeddings= self.extract_bert_embeddings(input_tensors)
 
-        embeddings= embeddings.view(1, -1)
+        embeddings= embeddings.view(1, -1)'''
+
+        model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+        embeddings = model.encode(sentence)
+        embeddings=torch.tensor(embeddings)
+        embeddings=embeddings.view(1,-1)
+        #print(embeddings.shape)
 
         return embeddings
     
     def reset(self):
         #case_context= input('Enter the case context: ')
         #defence_context=input('Enter the defence context: ')
-        case_context=api.generate_case()
+
+        '''try:
+            case_context=api.generate_case()
+        except openai.error.RateLimitError:
+            time.sleep(1)
+            case_context=api.generate_case()'''
+        
+        case_context= api2.generate_case()
+
+        print('Case generated: ', case_context)
         #print('hello')
         #defence_context="Case Context: " + case_context+ "-- Defence Context: " +defence_context
 
@@ -81,9 +101,20 @@ class CourtRoomEnvironment:
         else:
             done=False'''
         #print('yup7')
-        prosecutor_reward= api.reward_prosecutor(self.corpus_rules[argument])
-        #print('yup6')
-        defence_reward= api.reward_defence(self.corpus_rules[defence_argument])
+        
+        '''try:
+            prosecutor_reward= api.reward_prosecutor(self.corpus_rules[argument])
+            #print('yup6')
+            defence_reward= api.reward_defence(self.corpus_rules[defence_argument])
+        except openai.error.RateLimitError:
+            time.sleep(1)
+            prosecutor_reward= api.reward_prosecutor(self.corpus_rules[argument])
+            #print('yup6')
+            defence_reward= api.reward_defence(self.corpus_rules[defence_argument])'''
+        
+        prosecutor_reward= api2.reward_prosecutor(self.corpus_rules[argument])
+        defence_reward= api2.reward_defence(self.corpus_rules[defence_argument])
+            
         #print('yup5')
         if int(prosecutor_reward) >= 10 and int(defence_reward) >= 10:
             done= True
